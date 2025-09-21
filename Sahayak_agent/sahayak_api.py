@@ -423,7 +423,7 @@ async def generate_content(request: TextRequest):
         
         logger.info(f"Generating content for grades {request.grade_levels}, subject: {request.subject}")
         
-        content = api.generate_educational_content(
+        content = await api.generate_educational_content_with_retry(
             prompt=request.prompt,
             grade_levels=request.grade_levels,
             subject=request.subject,
@@ -476,7 +476,7 @@ async def analyze_image(file: UploadFile = File(...), grade_levels: str = "4,5,6
         
         logger.info(f"Analyzing image for grades {grade_list}")
         
-        analysis = api.analyze_educational_image(image_data)
+        analysis = await api.analyze_educational_image_with_retry(image_data)
         
         return {
             "analysis": analysis,
@@ -493,22 +493,6 @@ async def analyze_image(file: UploadFile = File(...), grade_levels: str = "4,5,6
     except Exception as e:
         logger.error(f"Image analysis error: {e}")
         raise HTTPException(status_code=500, detail=f"Image analysis failed: {str(e)}")
-        grades = [int(g.strip()) for g in grade_levels.split(",")]
-        
-        analysis = sahayak_api.analyze_educational_image(
-            image_data=image_data,
-            prompt=f"Analyze this educational content for grades {grades}"
-        )
-        
-        return {
-            "analysis": analysis,
-            "metadata": {
-                "filename": file.filename,
-                "grade_levels": grades
-            }
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/create-lesson-plan")
 async def create_lesson_plan(request: LessonPlanRequest):
@@ -539,19 +523,19 @@ async def create_lesson_plan(request: LessonPlanRequest):
 
 @app.post("/quick-math-problem")
 async def quick_math_problem(grade: int = 5, topic: str = "addition"):
-    if not sahayak_api:
-        raise HTTPException(status_code=503, detail="Sahayak API not initialized")
-    
-    prompt = f"Create a culturally relevant math problem about {topic} for grade {grade} students in rural India. Use local examples like farming, market, or festivals."
-    
     try:
-        content = sahayak_api.generate_educational_content(
+        api = await get_sahayak_api()
+        
+        prompt = f"Create a culturally relevant math problem about {topic} for grade {grade} students in rural India. Use local examples like farming, market, or festivals."
+        
+        content = await api.generate_educational_content_with_retry(
             prompt=prompt,
             grade_levels=[grade],
             subject="mathematics"
         )
         return {"problem": content}
     except Exception as e:
+        logger.error(f"Quick math problem error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
