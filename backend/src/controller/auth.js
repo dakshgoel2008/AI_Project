@@ -188,5 +188,5 @@ export const postLogout = ErrorWrapper(async (req, res, next) => {
     res.status(200).json({
         message: "Logged out successfully",
         success: true,
-    });
+   });
 });
