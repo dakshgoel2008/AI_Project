@@ -8,6 +8,7 @@ import cors from "cors";
 
 // Routes
 import authRoutes from "./routes/auth.js";
+import sahayakRoutes from "./routes/sahayak.js";
 
 dotenv.config();
 
@@ -36,6 +37,7 @@ app.get("/", (req, res) => {
 });
 
 app.use("/api/auth", authRoutes);
+app.use("/api/sahayak", sahayakRoutes);
 
 // Connect to DB and start server
 mongoose

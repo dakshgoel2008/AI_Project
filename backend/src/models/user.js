@@ -27,6 +27,17 @@ const userSchema = new Schema(
             type: String,
             required: true,
         },
+        role: {
+            type: String,
+            enum: ['student', 'teacher', 'admin'],
+            default: 'teacher'
+        },
+        profile: {
+            avatar: String,
+            bio: String,
+            phone: String,
+            location: String
+        },
         refreshToken: {
             type: String,
         },
