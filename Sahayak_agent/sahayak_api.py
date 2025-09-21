@@ -521,26 +521,24 @@ async def create_lesson_plan(request: LessonPlanRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/quick-math-problem")
-async def quick_math_problem(grade: int = 5, topic: str = "addition"):
-    try:
-        api = await get_sahayak_api()
+# @app.post("/quick-math-problem")
+# async def quick_math_problem(grade: int = 5, topic: str = "addition"):
+#     try:
+#         api = await get_sahayak_api()
         
-        prompt = f"Create a culturally relevant math problem about {topic} for grade {grade} students in rural India. Use local examples like farming, market, or festivals."
+#         prompt = f"Create a culturally relevant math problem about {topic} for grade {grade} students in rural India. Use local examples like farming, market, or festivals."
         
-        content = await api.generate_educational_content_with_retry(
-            prompt=prompt,
-            grade_levels=[grade],
-            subject="mathematics"
-        )
-        return {"problem": content}
-    except Exception as e:
-        logger.error(f"Quick math problem error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
+#         content = await api.generate_educational_content_with_retry(
+#             prompt=prompt,
+#             grade_levels=[grade],
+#             subject="mathematics"
+#         )
+#         return {"problem": content}
+#     except Exception as e:
+#         logger.error(f"Quick math problem error: {e}")
+#         raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
-    print("🚀 Starting Sahayak API Server...")
-    print("📖 Perfect for Agentic AI Day Hackathon!")
-    print("🔧 Make sure to set GEMINI_API_KEY environment variable")
+    print("Welcome to Sahayak Server...")
     uvicorn.run(app, host="0.0.0.0", port=8000)
