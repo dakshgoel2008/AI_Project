@@ -9,41 +9,25 @@ const isDBConnected = () => mongoose.connection.readyState === 1;
 export const authenticateToken = async (req, res, next) => {
     try {
         // Get token from header
-        const authHeader = req.headers['authorization'];
-        const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+        const authHeader = req.headers["authorization"];
+        const token = authHeader && authHeader.split(" ")[1]; // Bearer TOKEN
 
         if (!token) {
             return res.status(401).json({
                 success: false,
-                message: "Access token is required"
+                message: "Access token is required",
             });
         }
 
         // Verify token
-        const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
-        
-        // Check database connection before querying user
-        if (!isDBConnected()) {
-            // For basic JWT verification without database, we can still validate the token
-            // and create a minimal user object from the JWT payload
-            req.user = {
-                id: decoded.id,
-                email: decoded.email,
-                username: decoded.username,
-                _fromJWT: true, // Flag to indicate this is from JWT, not DB
-                _dbUnavailable: true
-            };
-            
-            console.warn("Database unavailable - using JWT payload for user info");
-            return next();
-        }
-        
+        const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_KEY);
+
         // Get user from database (when DB is available)
-        const user = await User.findById(decoded.id);
+        const user = await User.findById(decoded.userId);
         if (!user) {
             return res.status(401).json({
                 success: false,
-                message: "Invalid token - user not found"
+                message: "Invalid token - user not found",
             });
         }
 
@@ -54,7 +38,7 @@ export const authenticateToken = async (req, res, next) => {
         return res.status(403).json({
             success: false,
             message: "Invalid or expired token",
-            error: error.message
+            error: error.message,
         });
     }
 };
@@ -64,37 +48,37 @@ export const requireTeacher = async (req, res, next) => {
     try {
         // First authenticate
         await authenticateToken(req, res, () => {});
-        
+
         // Check if user has teacher profile
         const { Teacher } = await import("../models/education.js");
         const teacher = await Teacher.findOne({ userId: req.user.id });
-        
+
         if (!teacher) {
             return res.status(403).json({
                 success: false,
-                message: "Teacher profile required to access this resource"
+                message: "Teacher profile required to access this resource",
             });
         }
-        
+
         req.teacher = teacher;
         next();
     } catch (error) {
         return res.status(500).json({
             success: false,
             message: "Error checking teacher authorization",
-            error: error.message
+            error: error.message,
         });
     }
 };
 
 // Middleware for admin access
 export const requireAdmin = (req, res, next) => {
-    if (req.user && req.user.role === 'admin') {
+    if (req.user && req.user.role === "admin") {
         next();
     } else {
         return res.status(403).json({
             success: false,
-            message: "Admin access required"
+            message: "Admin access required",
         });
     }
 };
