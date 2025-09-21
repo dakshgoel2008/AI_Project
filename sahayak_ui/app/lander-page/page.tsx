@@ -1,3 +1,5 @@
+"use client"
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -81,7 +83,7 @@ const SahayakLanding = () => {
     }
   ];
 
-  const AnimatedCard = ({ children, delay = 0 }) => (
+  const AnimatedCard = ({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) => (
     <div 
       className="opacity-0 translate-y-8 animate-fade-in-up"
       style={{ 
