@@ -29,16 +29,22 @@ const teacherSchema = new Schema({
 
 // Student Schema for Classes
 const studentSchema = new Schema({
+    userId: {
+        type: Schema.Types.ObjectId,
+        ref: 'User',
+        required: true
+    },
     name: { type: String, required: true },
     rollNumber: { type: String, required: true },
     grade: { type: Number, required: true },
-    classId: { type: String, required: true },
-    teacherId: { type: Schema.Types.ObjectId, ref: 'Teacher', required: true },
+    section: { type: String, default: 'A' },
+    classId: { type: String },
+    teacherId: { type: Schema.Types.ObjectId, ref: 'Teacher' },
     faceEncodingId: { type: String }, // for attendance recognition
     parentContact: {
-        phone: String,
-        email: String,
-        name: String
+        phone: { type: String, default: "Not specified" },
+        email: { type: String, default: "Not specified" },
+        name: { type: String, default: "Not specified" }
     },
     attendance: [{
         date: { type: Date, required: true },

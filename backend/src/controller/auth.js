@@ -1,14 +1,36 @@
 import ErrorWrapper from "./../utils/ErrorWrapper.js";
 import ErrorHandler from "./../utils/ErrorHandler.js";
 import User from "../models/user.js";
+import { Teacher, Student } from "../models/education.js";
+import mongoose from "mongoose";
+
+// Database connection checker
+const isDBConnected = () => mongoose.connection.readyState === 1;
 
 export const postSignUp = ErrorWrapper(async (req, res, next) => {
-    const { email, password, username, name } = req.body;
+    // Check database connection first
+    if (!isDBConnected()) {
+        return res.status(503).json({
+            success: false,
+            message: "Database temporarily unavailable. User registration requires database connection.",
+            error: "SERVICE_UNAVAILABLE",
+            availableFeatures: ["AI content generation", "Image analysis"],
+            unavailableFeatures: ["User registration", "Authentication", "Data persistence"]
+        });
+    }
+
+    const { email, password, username, name, role } = req.body;
     const requiredFields = ["email", "password", "username", "name"];
     const missingFields = requiredFields.filter((field) => !req.body[field]);
 
     if (missingFields.length > 0) {
         throw new ErrorHandler(400, `Missing required fields: ${missingFields.join(", ")}`);
+    }
+
+    // Validate role if provided
+    const validRoles = ['student', 'teacher', 'admin'];
+    if (role && !validRoles.includes(role)) {
+        throw new ErrorHandler(400, `Invalid role. Must be one of: ${validRoles.join(", ")}`);
     }
 
     const existingUser = await User.findOne({
@@ -25,15 +47,51 @@ export const postSignUp = ErrorWrapper(async (req, res, next) => {
             password,
             name,
             email,
-            // profileImage: cloudinaryResponse.secure_url,
+            role: role || 'teacher' // Default to teacher if not specified
         });
         await user.save();
+
+        // Create role-specific profile
+        let roleProfile = null;
+        if (user.role === 'teacher') {
+            const teacher = new Teacher({
+                userId: user._id,
+                school: {
+                    name: "Not specified",
+                    location: "Not specified", 
+                    type: "government"
+                },
+                classes: [],
+                specialization: [],
+                experience: 0,
+                languages: ["English"]
+            });
+            await teacher.save();
+            roleProfile = teacher;
+        } else if (user.role === 'student') {
+            const student = new Student({
+                userId: user._id,
+                name: user.name,
+                grade: 1, // Default, can be updated later
+                section: "A",
+                rollNumber: Math.floor(Math.random() * 1000), // Temporary
+                parentContact: {
+                    name: "Not specified",
+                    phone: "Not specified",
+                    email: "Not specified"
+                }
+            });
+            await student.save();
+            roleProfile = student;
+        }
+
         const userObject = user.toObject();
-        delete userObject.password; // wanna delete the password from user before rendering the user.
-        // delete userObject.profileImage;
+        delete userObject.password;
+        
         res.status(201).json({
-            message: "User created successfully",
+            message: `${user.role.charAt(0).toUpperCase() + user.role.slice(1)} created successfully`,
             user: userObject,
+            roleProfile: roleProfile,
             success: true,
         });
     } catch (err) {
@@ -44,6 +102,11 @@ export const postSignUp = ErrorWrapper(async (req, res, next) => {
 
 // generating access and refresh token for the authentication.
 const generateAccessTokenAndRefreshToken = async (userId) => {
+    // Check database connection
+    if (!isDBConnected()) {
+        throw new ErrorHandler(503, "Database connection required for token generation");
+    }
+
     try {
         let user = await User.findOne({
             _id: userId,
@@ -61,6 +124,17 @@ const generateAccessTokenAndRefreshToken = async (userId) => {
 };
 
 export const postLogin = ErrorWrapper(async (req, res, next) => {
+    // Check database connection first
+    if (!isDBConnected()) {
+        return res.status(503).json({
+            success: false,
+            message: "Database temporarily unavailable. User login requires database connection.",
+            error: "SERVICE_UNAVAILABLE",
+            availableFeatures: ["AI content generation", "Image analysis"],
+            unavailableFeatures: ["User login", "Authentication", "Data persistence"]
+        });
+    }
+
     const { email, password, username } = req.body;
     if (!password) {
         throw new ErrorHandler(400, "Password is required");
@@ -116,6 +190,26 @@ export const postLogin = ErrorWrapper(async (req, res, next) => {
 });
 
 export const postLogout = ErrorWrapper(async (req, res, next) => {
+    // Check database connection first
+    if (!isDBConnected()) {
+        // For logout, we can still clear cookies even without DB
+        const cookieOptions = {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "development",
+            sameSite: "strict",
+            path: "/",
+        };
+        
+        return res
+            .clearCookie("accessToken", cookieOptions)
+            .clearCookie("refreshToken", cookieOptions)
+            .status(200)
+            .json({
+                success: true,
+                message: "Logged out successfully (database unavailable, cleared local session only)"
+            });
+    }
+
     const { refreshToken } = req.cookies;
     if (!refreshToken) {
         throw new ErrorHandler(401, "No refresh token provided");

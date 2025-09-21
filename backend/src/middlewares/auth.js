@@ -1,5 +1,9 @@
 import jwt from "jsonwebtoken";
 import User from "../models/user.js";
+import mongoose from "mongoose";
+
+// Database connection checker
+const isDBConnected = () => mongoose.connection.readyState === 1;
 
 // Middleware to verify JWT token
 export const authenticateToken = async (req, res, next) => {
@@ -18,7 +22,23 @@ export const authenticateToken = async (req, res, next) => {
         // Verify token
         const decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
         
-        // Get user from database
+        // Check database connection before querying user
+        if (!isDBConnected()) {
+            // For basic JWT verification without database, we can still validate the token
+            // and create a minimal user object from the JWT payload
+            req.user = {
+                id: decoded.id,
+                email: decoded.email,
+                username: decoded.username,
+                _fromJWT: true, // Flag to indicate this is from JWT, not DB
+                _dbUnavailable: true
+            };
+            
+            console.warn("Database unavailable - using JWT payload for user info");
+            return next();
+        }
+        
+        // Get user from database (when DB is available)
         const user = await User.findById(decoded.id);
         if (!user) {
             return res.status(401).json({
